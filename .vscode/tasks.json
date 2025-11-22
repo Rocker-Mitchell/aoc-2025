@@ -1,0 +1,58 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run All Unit Tests (Cargo Test)",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "test",
+                "--workspace",
+                "--",
+                "--test",
+                "--no-capture"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": "$rustc"
+        },
+        {
+            "label": "Lint Code (Clippy)",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "clippy",
+                "--workspace",
+                "--all-targets"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Format Code (Rustfmt)",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "fmt",
+                "--",
+                "-l"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

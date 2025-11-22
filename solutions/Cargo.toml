@@ -1,0 +1,8 @@
+[package]
+name = "solutions"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+aoc-framework = { path = "../aoc-framework" }
+thiserror.workspace = true

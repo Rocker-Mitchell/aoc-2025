@@ -1,0 +1,20 @@
+[workspace]
+members = ["aoc-framework", "solutions"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+thiserror = "2.0.17"
+
+[package]
+name = "aoc-2025"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = "1.0.100"
+aoc-framework = { path = "aoc-framework" }
+clap = { version = "4.5.51", features = ["derive"] }
+solutions = { path = "solutions" }
