@@ -1,6 +1,6 @@
 //! Utility functions for parsing input.
 
-use crate::{ParseError, ParseResult};
+use aoc_framework::{ParseError, ParseResult};
 
 /// Parse lines with a closure, wrapping any [`ParseError`] in a
 /// [`ParseError::InvalidLine`] error. Allows specifying an offset for line
@@ -22,9 +22,9 @@ use crate::{ParseError, ParseResult};
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use aoc_framework::{ParseError, ParseResult};
-/// use aoc_framework::util::parse::parse_lines_with_offset;
+/// use crate::util::parse::parse_lines_with_offset;
 ///
 /// let input = "Ignore this header line\n\n42\n100\n";
 /// let chunks: Vec<_> = input.split("\n\n").collect();
@@ -74,22 +74,6 @@ where
 ///
 /// If parsing any line fails, a [`ParseError::InvalidLine`] error is returned,
 /// wrapping the original error and indicating the line number.
-///
-/// # Examples
-///
-/// ```
-/// use aoc_framework::{ParseError, ParseResult};
-/// use aoc_framework::util::parse::parse_lines;
-///
-/// let input = "10\n20\n30\n";
-/// let parsed: Vec<u32> = parse_lines(input, |line| {
-///     line.parse::<u32>()
-///         .map_err(|source| ParseError::parse_int_from_str(line, source))
-/// })
-/// .collect::<ParseResult<_>>()
-/// .unwrap();
-/// assert_eq!(parsed, vec![10, 20, 30]);
-/// ```
 pub fn parse_lines<T, F>(
     input: &str,
     parser: F,

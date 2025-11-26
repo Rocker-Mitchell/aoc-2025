@@ -34,6 +34,8 @@ use thiserror::Error;
 // - regex
 // - nalgebra for matrix and vectors
 
+mod util;
+
 // --- EXPORT SOLUTION MODULES HERE ---
 pub mod day00;
 

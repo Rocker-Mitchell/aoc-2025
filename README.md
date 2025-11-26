@@ -51,7 +51,7 @@ cargo fmt --check
 
 ### Project Layout
 
-* aoc-framework: library providing `Solution` trait, parsing helpers, error
-  types, `OutputHandler` trait and `measure_time!` macro.
-* solutions: per-day solution implementations.
-* src: CLI binary and helpers.
+- aoc-framework: library providing `Solution` trait, error types,
+  `OutputHandler` trait and `measure_time!` macro.
+- solutions: per-day solution implementations.
+- src: CLI binary and helpers.

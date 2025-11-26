@@ -38,7 +38,6 @@ use std::fmt::Display;
 pub mod error;
 pub mod macros;
 pub mod output;
-pub mod util;
 
 // re-export commonly used items
 pub use error::{ParseError, ParseResult};

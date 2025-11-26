@@ -1,5 +1,6 @@
-use aoc_framework::util::parse::parse_lines;
 use aoc_framework::{ParseError, ParseResult, Solution};
+
+use crate::util::parse::parse_lines;
 
 /// An example of an implemented solution.
 ///
