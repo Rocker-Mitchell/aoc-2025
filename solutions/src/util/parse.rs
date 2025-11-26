@@ -102,7 +102,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_lines_with_offset_errors() {
+    fn parse_lines_with_offset_creates_invalid_line_error() {
         let input = "100\nabc\n200\n";
         let offset = 5;
         let result: ParseResult<Vec<u32>> =

@@ -74,7 +74,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_error_empty_input() {
+    fn parse_error_on_empty_input() {
         let result = Day00::parse("\n\n");
         assert!(result.is_err(), "expected parse to fail");
         match result.unwrap_err() {
@@ -86,7 +86,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_error_non_number() {
+    fn parse_error_on_non_number() {
         let result = Day00::parse("10\n15bad\n20\n");
         assert!(result.is_err(), "expected parse to fail");
         match result.unwrap_err() {
@@ -121,7 +121,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_error_empty_line() {
+    fn parse_error_on_empty_line() {
         let result = Day00::parse("10\n20\n\n30\n");
         assert!(result.is_err(), "expected parse to fail");
         match result.unwrap_err() {
