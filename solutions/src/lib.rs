@@ -2,8 +2,11 @@
 //!
 //! This module provides [`run_day`] to dynamically run a solution by its day.
 //!
-//! Making a solution available to run requires exporting its module & adding
-//! a match case for its day within [`run_day`].
+//! Making a solution available to run requires implementing
+//! [`RunnableSolution`] (likely via the
+//! [`impl_runnable_solution!`][aoc_framework::impl_runnable_solution] macro),
+//! exporting its module, and adding a match case for its day within
+//! [`run_day`].
 
 #![warn(clippy::suspicious, clippy::complexity, clippy::perf, clippy::pedantic)]
 #![warn(
@@ -27,7 +30,7 @@
 )]
 #![deny(clippy::unwrap_used)]
 
-use aoc_framework::{OutputHandler, ParseError, Solution};
+use aoc_framework::{OutputHandler, ParseError, RunnableSolution};
 use thiserror::Error;
 
 // TODO possible packages to add later:
@@ -41,7 +44,7 @@ pub mod day00;
 
 /// Run a solution based on the day.
 ///
-/// See [`Solution::run`] for arguments used.
+/// See [`RunnableSolution::run`] for arguments used.
 ///
 /// # Errors
 ///

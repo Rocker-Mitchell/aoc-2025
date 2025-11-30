@@ -146,10 +146,6 @@ impl OutputHandler for CliOutputHandler {
             self.part_output(part, output);
         }
     }
-
-    fn part_not_implemented(&mut self, _part: SolutionPart) {
-        println!("(Not yet implemented)");
-    }
 }
 
 fn main() -> Result<()> {

@@ -1,4 +1,7 @@
-use aoc_framework::{ParseError, ParseResult, Solution};
+use aoc_framework::{
+    ParseError, ParseResult, ParsedPart1, ParsedPart2, SolutionName,
+    impl_runnable_solution,
+};
 
 use crate::util::parse::parse_lines;
 
@@ -8,9 +11,12 @@ use crate::util::parse::parse_lines;
 /// utility function, then returning the count of numbers for part 1 and the
 /// sum of numbers for part 2.
 pub struct Day00;
-impl Solution for Day00 {
-    const NAME: &'static str = "Day 0: Example Solution";
 
+impl SolutionName for Day00 {
+    const NAME: &'static str = "Day 0: Example Solution";
+}
+
+impl ParsedPart1 for Day00 {
     type ParsedInput = Vec<u32>;
 
     fn parse(input: &str) -> ParseResult<Self::ParsedInput> {
@@ -35,14 +41,18 @@ impl Solution for Day00 {
         // count of numbers
         numbers.len()
     }
+}
 
+impl ParsedPart2 for Day00 {
     type Part2Output = u32;
 
-    fn part2(numbers: &Self::ParsedInput) -> Option<Self::Part2Output> {
+    fn part2(numbers: &Self::ParsedInput) -> Self::Part2Output {
         // sum of numbers
-        Some(numbers.iter().sum::<u32>())
+        numbers.iter().sum::<u32>()
     }
 }
+
+impl_runnable_solution!(Day00 => ParsedPart2);
 
 #[cfg(test)]
 mod tests {
@@ -67,8 +77,7 @@ mod tests {
     #[test]
     fn part2_solves_example() -> ParseResult<()> {
         let parsed = Day00::parse(EXAMPLE_INPUT)?;
-        let result =
-            Day00::part2(&parsed).expect("part 2 should be implemented");
+        let result = Day00::part2(&parsed);
         assert_eq!(result, 100);
         Ok(())
     }
