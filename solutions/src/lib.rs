@@ -67,11 +67,14 @@ pub fn run_day(
     .map_err(DaySolutionError::from)
 }
 
+/// An error that can occur when running a day's solution.
 #[derive(Error, Debug)]
 pub enum DaySolutionError {
+    /// The solution for the given day is not yet implemented.
     #[error("solution for day {0} not yet implemented")]
     DayNotImplemented(u8),
 
+    /// The solution failed to parse input.
     #[error("solution failed to parse input")]
     ParseError(#[from] ParseError),
 }
