@@ -22,11 +22,13 @@ impl ParsedPart1 for Day00 {
     fn parse(input: &str) -> ParseResult<Self::ParsedInput> {
         // expect lines of unsigned numbers
         // - ignore trailing whitespace
-        let numbers: Vec<u32> = parse_lines(input.trim_end(), |line| {
-            line.parse::<u32>()
-                .map_err(|source| ParseError::parse_int_from_str(line, source))
-        })
-        .collect::<ParseResult<_>>()?;
+        let numbers: Self::ParsedInput =
+            parse_lines(input.trim_end(), |line| {
+                line.parse::<u32>().map_err(|source| {
+                    ParseError::parse_int_from_str(line, source)
+                })
+            })
+            .collect::<ParseResult<_>>()?;
 
         if numbers.is_empty() {
             Err(ParseError::EmptyInput)
@@ -60,11 +62,11 @@ mod tests {
 
     use super::*;
 
-    const EXAMPLE_INPUT: &str = "\
-        10\n\
-        20\n\
-        30\n\
-        40\n";
+    const EXAMPLE_INPUT: &str = r"10
+20
+30
+40
+";
 
     #[test]
     fn part1_solves_example() -> ParseResult<()> {
