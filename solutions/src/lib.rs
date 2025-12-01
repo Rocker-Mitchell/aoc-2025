@@ -41,6 +41,7 @@ mod util;
 
 // --- EXPORT SOLUTION MODULES HERE ---
 pub mod day00;
+pub mod day01;
 
 /// Run a solution based on the day.
 ///
@@ -62,6 +63,7 @@ pub fn run_day(
     match day {
         // --- MATCH SOLUTIONS HERE ---
         0 => day00::Day00::run(handler, input, timed),
+        1 => day01::Day01::run(handler, input, timed),
         _ => return Err(DaySolutionError::DayNotImplemented(day)),
     }
     .map_err(DaySolutionError::from)

@@ -14,6 +14,14 @@ pub enum ParseError {
     #[error("input was empty")]
     EmptyInput,
 
+    /// The input contains an unexpected empty line.
+    #[error("line was empty")]
+    EmptyLine,
+
+    /// An invalid character was parsed.
+    #[error("invalid character: {0:?}")]
+    ParseChar(char),
+
     /// Failed to parse string into an integer.
     #[error("failed to parse string into integer: {string:?}")]
     ParseInt {
