@@ -50,7 +50,7 @@ impl ParsedPart2 for Day00 {
 
     fn part2(numbers: &Self::ParsedInput) -> Self::Part2Output {
         // sum of numbers
-        numbers.iter().sum::<u32>()
+        numbers.iter().sum::<Self::Part2Output>()
     }
 }
 
