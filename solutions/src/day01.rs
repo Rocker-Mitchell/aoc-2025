@@ -39,8 +39,8 @@ Inspecting distances given, 3 digits seem to be the largest they get.
 So, u16 with a maximum 65,535 should be a good size.
 
 With 99 as the physical max, u8 w/ maximum 255 should work for dial value,
-but rotation math would need to convert for larger size of rotation & signed
-values.
+but rotation math would need to convert for larger size of rotation and/or
+signed values.
 */
 
 type RotationDistance = u16;
@@ -48,8 +48,8 @@ type DialValue = u8;
 
 /// Where the dial starts.
 const DIAL_START: DialValue = 50;
-/// The inclusive maximum of the dial.
-const DIAL_MAX: DialValue = 99;
+/// The exclusive maximum of the dial, or a full rotation distance.
+const DIAL_MAX: DialValue = 100;
 
 /// The direction of a rotation.
 #[derive(Debug, PartialEq)]
@@ -90,44 +90,53 @@ fn rotate_dial_and_count_zeros_passed(
     value: DialValue,
     rotation: &Rotation,
 ) -> (DialValue, u16) {
-    // want to avoid overflow by using signed type that can hold max rotation
-    // distance
-    let mut signed_value = i32::from(value);
+    let max_unsigned = u16::from(DIAL_MAX);
+    let max_signed = i16::from(DIAL_MAX);
+
+    // 0 to 99 range means ones and tens are the only relevance to some new
+    //   value, hundreds and on can only be full rotations
+    // break down distance as full rotations (/max) and remainder (%max)
+    let full_rotations = rotation.distance / max_unsigned;
+    let remaining_rotation = i16::try_from(rotation.distance % max_unsigned)
+        .expect("failed to cast rotation.distance % DIAL_MAX");
+
+    // want to avoid overflow by using signed type that can hold the result of
+    // addition or subtraction
+    // - 99 + 99 = 198; too big for i8's max 127
+    // - 0 - 99 = -99
+    let mut signed_value = i16::from(value);
 
     match rotation.direction {
         Direction::Left => {
-            signed_value -= i32::from(rotation.distance);
+            signed_value -= remaining_rotation;
         }
         Direction::Right => {
-            signed_value += i32::from(rotation.distance);
+            signed_value += remaining_rotation;
         }
     }
-
-    // add 1 because the max const is *inclusive*, but our math should be on
-    // the exclusive max
-    let max = i32::from(DIAL_MAX) + 1;
 
     // use modulo to mimic the cycling/wrap of the dial range
     // - don't want remainder op behavior with signed values, prefer
     //   mathematical modulo op
-    let wrapped_value = signed_value.rem_euclid(max);
+    let wrapped_value = signed_value.rem_euclid(max_signed);
     let new_value: DialValue =
-        u8::try_from(wrapped_value).expect("`wrapped_value` failed to cast");
+        u8::try_from(wrapped_value).expect("failed to cast wrapped_value");
 
-    // the remainder was relevant to finding the new value, division should
-    // inform how many times it cycled
-    let signed_cycles = signed_value.div_euclid(max);
-    let mut cycles = u16::try_from(signed_cycles.abs())
-        .expect("`signed_cycles.abs()` failed to cast");
-    // - this can overcount on left-from-zero and right-to-zero
-    //   - not spending time to solve underlying reason; detect special cases
-    if (rotation.direction == Direction::Left && value == 0)
-        || (rotation.direction == Direction::Right && new_value == 0)
+    // already extracted full rotations, so need to check how value changed for
+    // extra pass of 0
+    let mut zeros_passed = full_rotations;
+    // - left passing 0 can be observed if signed value is negative
+    //   - but if original value was 0, we didn't actually pass 0
+    // - right passing 0 can be observed if signed value is over max
+    //   - but if new value is 0 aka signed value is max, we didn't actually
+    //     pass 0
+    if (rotation.direction == Direction::Left && value != 0 && signed_value < 0)
+        || (rotation.direction == Direction::Right && signed_value > max_signed)
     {
-        cycles -= 1;
+        zeros_passed += 1;
     }
 
-    (new_value, cycles)
+    (new_value, zeros_passed)
 }
 
 impl ParsedPart1 for Day01 {
@@ -139,7 +148,7 @@ impl ParsedPart1 for Day01 {
                 line.chars().nth(0).ok_or(ParseError::EmptyLine)?;
             let direction = Direction::try_from(first_char)?;
             let distance: RotationDistance =
-                line[1..].parse::<u16>().map_err(|source| {
+                line[1..].parse::<RotationDistance>().map_err(|source| {
                     ParseError::parse_int_from_str(line, source)
                 })?;
             Ok(Rotation {
@@ -161,7 +170,7 @@ impl ParsedPart1 for Day01 {
     fn part1(rotations: &Self::ParsedInput) -> Self::Part1Output {
         // iterate over rotations and track when result is 0
         let mut dial: DialValue = DIAL_START;
-        let mut count_zeros: u32 = 0;
+        let mut count_zeros: Self::Part1Output = 0;
         for rot in rotations {
             let (new_dial, _) = rotate_dial_and_count_zeros_passed(dial, rot);
             dial = new_dial;
@@ -179,7 +188,7 @@ impl ParsedPart2 for Day01 {
     fn part2(rotations: &Self::ParsedInput) -> Self::Part2Output {
         // iterate rotations and track 0's from function & when result is 0
         let mut dial: DialValue = DIAL_START;
-        let mut count_zeros: u32 = 0;
+        let mut count_zeros: Self::Part2Output = 0;
         for rot in rotations {
             let (new_dial, zeros_passed) =
                 rotate_dial_and_count_zeros_passed(dial, rot);
@@ -251,7 +260,7 @@ L82
             5,
             &Rotation {
                 direction: Direction::Left,
-                distance: 5 + u16::from(DIAL_MAX) + 1,
+                distance: 5 + u16::from(DIAL_MAX),
             },
         );
         assert_eq!(zeros, 1);
@@ -263,7 +272,7 @@ L82
             0,
             &Rotation {
                 direction: Direction::Left,
-                distance: 5 + u16::from(DIAL_MAX) + 1,
+                distance: 5 + u16::from(DIAL_MAX),
             },
         );
         assert_eq!(zeros, 1);
@@ -299,7 +308,7 @@ L82
             95,
             &Rotation {
                 direction: Direction::Right,
-                distance: 5 + u16::from(DIAL_MAX) + 1,
+                distance: 5 + u16::from(DIAL_MAX),
             },
         );
         assert_eq!(zeros, 1);
@@ -311,7 +320,7 @@ L82
             0,
             &Rotation {
                 direction: Direction::Right,
-                distance: 5 + u16::from(DIAL_MAX) + 1,
+                distance: 5 + u16::from(DIAL_MAX),
             },
         );
         assert_eq!(zeros, 1);
