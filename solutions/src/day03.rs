@@ -73,21 +73,19 @@ impl ParsedPart1 for Day03 {
     type ParsedInput = Vec<Bank>;
 
     fn parse(input: &str) -> aoc_framework::ParseResult<Self::ParsedInput> {
-        // not trying char::to_digit() as that compounds into needing to try
-        // converting its u32 down, error handling both, and basically needing
-        // to add new ParseError's around these cases that'd need to abstract
-        // what task was attempted & the source char; ParseError::ParseInt was
-        // already working, keep using it
         let banks: Self::ParsedInput = parse_lines(input, |line| {
             if line.is_empty() {
                 Err(ParseError::EmptyLine)
             } else {
                 line.chars()
                     .map(|c| {
-                        let string = c.to_string();
-                        string.parse::<Joltage>().map_err(|source| {
-                            ParseError::parse_int_from_str(&string, source)
-                        })
+                        c.to_digit(10)
+                            .map(|value| {
+                                // should never fail to convert base 10 digit
+                                Joltage::try_from(value)
+                                    .expect("failed to convert digit from char into Joltage")
+                            })
+                            .ok_or(ParseError::ParseChar(c))
                     })
                     .collect::<ParseResult<Bank>>()
             }
