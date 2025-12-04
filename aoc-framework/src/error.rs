@@ -18,6 +18,15 @@ pub enum ParseError {
     #[error("line was empty")]
     EmptyLine,
 
+    /// The input contains a line with an unexpected length.
+    #[error("incorrect line length: expected {expected}, got {actual}")]
+    LineLength {
+        /// The expected length.
+        expected: usize,
+        /// The actual length.
+        actual: usize,
+    },
+
     /// An invalid character was parsed.
     #[error("invalid character: {0:?}")]
     ParseChar(char),
