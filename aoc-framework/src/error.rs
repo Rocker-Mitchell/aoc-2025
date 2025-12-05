@@ -14,6 +14,20 @@ pub enum ParseError {
     #[error("input was empty")]
     EmptyInput,
 
+    /// Expected a chunk delimiter in input. Contains the delimiter for display.
+    #[error("expected chunk delimiter {0:?}")]
+    NoChunkDelimiter(String),
+
+    /// A chunk of input was expected but found empty.
+    #[error("expected chunk {chunk_number} ({description}) was empty")]
+    EmptyChunk {
+        /// The numerical order of the chunk. This should be one-indexed (the
+        /// first chunk is 1).
+        chunk_number: usize,
+        /// A contextual description of the chunk, for display.
+        description: String,
+    },
+
     /// The input contains an unexpected empty line.
     #[error("line was empty")]
     EmptyLine,
@@ -27,9 +41,17 @@ pub enum ParseError {
         actual: usize,
     },
 
-    /// An invalid character was parsed.
-    #[error("invalid character: {0:?}")]
-    ParseChar(char),
+    /// A line in the input caused a parsing error.
+    #[error("failure parsing line {line}")]
+    InvalidLine {
+        /// The line number. This should be one-indexed (the first line is 1).
+        line: usize,
+        source: Box<ParseError>,
+    },
+
+    /// Expected a delimiter while parsing. Contains the delimiter for display.
+    #[error("expected delimiter {0:?}")]
+    NoDelimiter(String),
 
     /// Failed to parse string into an integer.
     #[error("failed to parse string into integer: {string:?}")]
@@ -39,25 +61,12 @@ pub enum ParseError {
         source: ParseIntError,
     },
 
-    /// A line in the input caused a parsing error.
-    #[error("failure parsing line {line}")]
-    InvalidLine {
-        /// The line number. This should be one-indexed (the first line is 1).
-        line: usize,
-        source: Box<ParseError>,
-    },
+    /// An invalid character was parsed.
+    #[error("invalid character: {0:?}")]
+    ParseChar(char),
 }
 
 impl ParseError {
-    /// Create a parse int error from a string slice and source error.
-    #[must_use]
-    pub fn parse_int_from_str(string: &str, source: ParseIntError) -> Self {
-        Self::ParseInt {
-            string: String::from(string),
-            source,
-        }
-    }
-
     /// Create an invalid line error from a zero-based line index and source
     /// error.
     #[must_use]
@@ -72,6 +81,15 @@ impl ParseError {
         Self::InvalidLine {
             line,
             source: Box::new(source),
+        }
+    }
+
+    /// Create a parse int error from a string slice and source error.
+    #[must_use]
+    pub fn parse_int_from_str(string: &str, source: ParseIntError) -> Self {
+        Self::ParseInt {
+            string: String::from(string),
+            source,
         }
     }
 }
