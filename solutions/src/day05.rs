@@ -163,9 +163,10 @@ impl ParsedPart1 for Day05 {
 
         let ranges: Vec<FreshIngredientRange> =
             parse_lines(ranges_input, |line| {
+                let delimiter = '-';
                 let (first_id_str, second_id_str) = line
-                    .split_once('-')
-                    .ok_or_else(|| ParseError::NoDelimiter('-'.into()))?;
+                    .split_once(delimiter)
+                    .ok_or_else(|| ParseError::NoDelimiter(delimiter.into()))?;
 
                 let first_id =
                     first_id_str.parse::<IngredientId>().map_err(|source| {

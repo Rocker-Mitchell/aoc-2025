@@ -111,15 +111,16 @@ impl ParsedPart1 for Day02 {
             .trim_end()
             .split(',')
             .map(|value| {
-                let mut ids = value.splitn(2, '-');
+                let delimiter = '-';
+                let (first_id_str, second_id_str) = value
+                    .split_once(delimiter)
+                    .ok_or_else(|| ParseError::NoDelimiter(delimiter.into()))?;
 
-                let first_id_str = ids.next().unwrap_or("");
                 let first_id =
                     first_id_str.parse::<ProductId>().map_err(|source| {
                         ParseError::parse_int_from_str(first_id_str, source)
                     })?;
 
-                let second_id_str = ids.next().unwrap_or("");
                 let second_id =
                     second_id_str.parse::<ProductId>().map_err(|source| {
                         ParseError::parse_int_from_str(second_id_str, source)
