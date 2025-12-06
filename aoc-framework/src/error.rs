@@ -53,6 +53,10 @@ pub enum ParseError {
     #[error("expected delimiter {0:?}")]
     NoDelimiter(String),
 
+    /// An invalid string was parsed.
+    #[error("invalid string: {0:?}")]
+    ParseString(String),
+
     /// Failed to parse string into an integer.
     #[error("failed to parse string into integer: {string:?}")]
     ParseInt {
