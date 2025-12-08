@@ -6,4 +6,5 @@ edition.workspace = true
 [dependencies]
 aoc-framework = { path = "../aoc-framework" }
 nalgebra = "0.34.1"
+ordered-float = "5.1.0"
 thiserror.workspace = true

@@ -1,6 +1,6 @@
 //! Error and result types for parsing inputs from Advent of Code.
 
-use std::num::ParseIntError;
+use std::num::{ParseFloatError, ParseIntError};
 
 use thiserror::Error;
 
@@ -65,6 +65,14 @@ pub enum ParseError {
         source: ParseIntError,
     },
 
+    /// Failed to parse string into a float.
+    #[error("failed to parse string into float: {string:?}")]
+    ParseFloat {
+        /// The string that failed to parse.
+        string: String,
+        source: ParseFloatError,
+    },
+
     /// An invalid character was parsed.
     #[error("invalid character: {0:?}")]
     ParseChar(char),
@@ -92,6 +100,15 @@ impl ParseError {
     #[must_use]
     pub fn parse_int_from_str(string: &str, source: ParseIntError) -> Self {
         Self::ParseInt {
+            string: String::from(string),
+            source,
+        }
+    }
+
+    /// Create a parse float error from a string slice and source error.
+    #[must_use]
+    pub fn parse_float_from_str(string: &str, source: ParseFloatError) -> Self {
+        Self::ParseFloat {
             string: String::from(string),
             source,
         }
