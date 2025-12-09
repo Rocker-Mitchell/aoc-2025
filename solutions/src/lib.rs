@@ -49,6 +49,7 @@ pub mod day05;
 pub mod day06;
 pub mod day07;
 pub mod day08;
+pub mod day09;
 
 /// Run a solution based on the day.
 ///
@@ -78,6 +79,7 @@ pub fn run_day(
         6 => day06::Day06::run(handler, input, timed),
         7 => day07::Day07::run(handler, input, timed),
         8 => day08::Day08::run(handler, input, timed),
+        9 => day09::Day09::run(handler, input, timed),
         _ => return Err(DaySolutionError::DayNotImplemented(day)),
     }
     .map_err(DaySolutionError::from)
