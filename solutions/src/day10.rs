@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use aoc_framework::{
     ParseError, ParseResult, ParsedPart1, ParsedPart2, SolutionName,
@@ -49,8 +49,18 @@ impl SolutionName for Day10 {
     const NAME: &'static str = "Day 10: Factory";
 }
 
+/// A button on a machine, represented as a set of indexes that the button
+/// modifies.
+type Button = HashSet<usize>;
+
+/// Indicator lights, represented as an indexable sequence of
+/// boolean values.
+type IndicatorLights = Vec<bool>;
+
 /// A type for joltage numbers.
 type Joltage = u16;
+/// Joltage counters, represented by an indexable sequence of joltage numbers.
+type JoltageCounters = Vec<Joltage>;
 
 /// Types of braces used in input.
 enum BraceType {
@@ -87,393 +97,156 @@ fn strip_braces_panic(s: &str, braces: &BraceType) -> String {
     }
 }
 
-/// A representation of a machine with light indicators & buttons.
-pub struct LightMachine {
-    /// The goal configuration of light indicators.
-    light_goal: Vec<bool>,
-    /// A collection of buttons.
-    ///
-    /// A button can consist of a set of indexes to light indicators. Pressing
-    /// the button toggles the lights by index.
-    buttons: Vec<HashSet<usize>>,
-    /// Joltage requirements for the machine.
-    #[expect(dead_code, reason = "still working on solution")]
-    joltage_requirements: Vec<Joltage>,
+/// A representation of a machine with indicator lights, joltage counters, and
+/// buttons.
+pub struct Machine {
+    /// A collection of buttons on the machine.
+    buttons: Vec<Button>,
+    /// The expected length of a sequence that buttons can modify, either for
+    /// indicator lights or joltage counters.
+    length: usize,
 }
 
-impl LightMachine {
-    /// Calculate the resulting light configuration (starting all off) after
-    /// pressing the given buttons by index once.
-    fn calculate_resulting_light(
+impl Machine {
+    /// Calculate the resulting indicator lights (starting all off) after
+    /// pressing the given buttons by index once each.
+    fn calculate_lights_from_buttons(
         &self,
-        button_idxs_pressed: &HashSet<usize>,
-    ) -> Vec<bool> {
-        let mut lights = vec![false; self.light_goal.len()];
-        for &button_idx in button_idxs_pressed {
+        button_indexes: &HashSet<usize>,
+    ) -> IndicatorLights {
+        // init a vector to hold light states
+        let mut lights = vec![false; self.length];
+        for &button_idx in button_indexes {
             let button = &self.buttons[button_idx];
+            // iterate indexes the button modifies
             for &light_idx in button {
+                // toggle the current value
                 lights[light_idx] = !lights[light_idx];
             }
         }
         lights
     }
 
-    /// Check pressing the given buttons by index once will match the light
-    /// indicator goal.
-    fn check_light_solution(
+    /// Calculate the resulting joltage counter after pressing the given
+    /// buttons by index once each.
+    fn calculate_counters_from_single_buttons(
         &self,
-        button_idxs_pressed: &HashSet<usize>,
-    ) -> bool {
-        let result = self.calculate_resulting_light(button_idxs_pressed);
-        result == self.light_goal
-    }
-
-    /// Recursively determine a combination of buttons by index that will match
-    /// the light indicator goal when pressed once.
-    ///
-    /// # Args
-    /// - `presses_left` - how many presses left to apply in this recursion
-    ///   step.
-    /// - `start_idx` - the button index to start at and iterate after when
-    ///   recursing for next step.
-    /// - `current_combo` - the current combination of button indexes being
-    ///   pressed once.
-    ///
-    /// # Returns
-    ///
-    /// An option that either holds `Some(combo)` for a found working combo, or
-    /// `None` for no working combination found.
-    fn find_button_combinations_for_light(
-        &self,
-        presses_left: usize,
-        start_idx: usize,
-        current_combo: &mut HashSet<usize>,
-    ) -> Option<HashSet<usize>> {
-        // base case
-        if presses_left == 0 {
-            // either the combo results in the goal or not
-            if self.check_light_solution(current_combo) {
-                return Some(current_combo.clone());
-            }
-            return None;
-        }
-
-        // iterate remaining buttons to press
-        for idx in start_idx..self.buttons.len() {
-            current_combo.insert(idx);
-
-            // recurse with one less press left & start index after current index
-            if let Some(result) = self.find_button_combinations_for_light(
-                presses_left - 1,
-                idx + 1,
-                current_combo,
-            ) {
-                return Some(result);
-            }
-
-            // backtrack for next loop
-            current_combo.remove(&idx);
-        }
-
-        // no successful combination found
-        None
-    }
-
-    // Determine the minimum button presses to get the light indicator goal.
-    fn find_minimum_button_presses_for_light_goal(&self) -> Option<usize> {
-        /*
-        Thanks Gemini for pointing out I don't need permutations of increasing
-        presses to distribute as permutations:
-        any button only needs to be pressed once or never
-
-        I already intuited an even number of presses would be a net zero, but
-        didn't catch on that odd number presses greater than one would be net
-        zero to one press
-        */
-
-        for presses in 1..=self.buttons.len() {
-            let mut current_combo = HashSet::new();
-            if self
-                .find_button_combinations_for_light(
-                    presses,
-                    0,
-                    &mut current_combo,
-                )
-                .is_some()
-            {
-                return Some(presses);
+        button_indexes: &HashSet<usize>,
+    ) -> JoltageCounters {
+        // init a vector to hold counters
+        let mut counters = vec![0; self.length];
+        for &button_idx in button_indexes {
+            let button = &self.buttons[button_idx];
+            // iterate indexes the button modifies
+            for &counter_idx in button {
+                // increment the counter
+                counters[counter_idx] += 1;
             }
         }
-
-        // failed to find min button presses to produce goal
-        None
-    }
-
-    fn find_minimum_button_presses_for_joltage_requirements(&self) -> u64 {
-        /*
-        I'm stuck on getting anything to work, be performant, or be
-        implementable
-        - couldn't figure out what decomposition to use with nalgebra
-        - Copilot guided me to BFS, then A* but both were very slow for even
-          one machine from input
-        - Copilot then wanted me to use good_lp, but both it and Google AI
-          kept feeding me un-compilable code until I eventually coersed it to
-          something valid, to then be met with it failing to link to a
-          `link.exe`
-        I can't solve this right now
-        */
-        todo!()
-
-        /*
-        use good_lp::{
-            Expression, Solution, SolverModel, default_solver, variable,
-            variables,
-        };
-
-        if self.joltage_requirements.is_empty() {
-            // technically no presses needed for no requirements
-            return 0;
-        }
-
-        let target = &self.joltage_requirements;
-        let n_buttons = self.buttons.len();
-
-        // create int vars: x[i] as presses of button i
-        let mut vars = variables!();
-        let x_vars: Vec<_> = (0..n_buttons)
-            .map(|_| vars.add(variable().integer().min(0)))
-            .collect();
-
-        // objective: minimize sum of x[i]
-        // use default solver
-        let objective: Expression = x_vars.iter().sum();
-        let mut model = vars.minimise(objective).using(default_solver);
-
-        // build constraints: for each counter i, sum of
-        // (button j affects i) * x[j] == target[i]
-        for (i, &target_val) in target.iter().enumerate() {
-            let mut expr: Expression = 0.into();
-            for (j, button) in self.buttons.iter().enumerate() {
-                if button.contains(&i) {
-                    expr += x_vars[j];
-                }
-            }
-            model = model.with(expr.eq(target_val));
-        }
-
-        // solve
-        model.solve().map_or_else(
-            |_| panic!("ILP solver failed to find solution"),
-            |solution| {
-                x_vars
-                    .iter()
-                    .map(|&var| {
-                        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "variables have lower bound 0 and shouldn't be aggressively big")]
-                        let value = solution.value(var).round() as u64;
-                        value
-                    })
-                    .sum()
-            },
-        )
-        */
-
-        /*
-        // prepare button increments: index first by button, then by counter
-        let button_vectors: Vec<Vec<Joltage>> = self
-            .buttons
-            .iter()
-            .map(|btn| {
-                (0..n_counters)
-                    .map(|i| Joltage::from(btn.contains(&i)))
-                    .collect()
-            })
-            .collect();
-
-        // checking there isn't a counter that can't be affected by a button
-        for (i, &t) in target.iter().enumerate() {
-            assert!(
-                t == 0 || button_vectors.iter().any(|bv| bv[i] != 0),
-                "no button affects counter {i}, impossible to reach requirement"
-            );
-        }
-
-        /*
-        // precompute max number of counters any single button increments
-        let max_button_width = button_vectors
-            .iter()
-            .map(|bv| bv.iter().map(|&v| u32::from(v)).sum::<u32>())
-            .max()
-            .unwrap_or(0);
-        assert!(max_button_width > 0, "no usable buttons found");
-        */
-
-        // precompute: for each counter, the min presses to increment by 1
-        let min_presses_per_counter: Vec<u64> = (0..n_counters)
-            .map(|i| {
-                button_vectors
-                    .iter()
-                    .filter(|bv| bv[i] != 0)
-                    .map(|_| 1u64)
-                    .min()
-                    .unwrap_or(u64::MAX)
-            })
-            .collect();
-
-        // heuristic for a state: ceil(sum_remaining / max_button_width)
-        let heuristic = |state: &Vec<Joltage>| -> u64 {
-            target
-                .iter()
-                .zip(state.iter())
-                .zip(min_presses_per_counter.iter())
-                .map(|((&t, &s), &min_press)| {
-                    u64::from(t-s) * min_press
-                })
-                .sum()
-            /*
-            let sum_remaining: u32 = target
-                .iter()
-                .zip(state.iter())
-                .map(|(t, s)| u32::from(t - s))
-                .sum();
-            if sum_remaining == 0 {
-                0
-            } else {
-                u64::from(sum_remaining.div_ceil(max_button_width))
-            }
-            */
-        };
-
-        // start search with all 0's
-        let start = vec![0u16; n_counters];
-        if start == target {
-            return 0;
-        }
-
-        //let mut queue = VecDeque::new();
-        //let mut seen = HashSet::new();
-        //queue.push_back((start.clone(), 0));
-        //seen.insert(start);
-
-        // A* priority queue: Reverse((priority, g, state)) so smallest
-        // priority first
-        let mut heap = BinaryHeap::new();
-        let mut best_g = HashMap::new();
-
-        let start_h = heuristic(&start);
-        heap.push(Reverse((start_h, 0u64, start.clone())));
-        best_g.insert(start, 0);
-
-        while let Some(Reverse((_, g, state))) = heap.pop() {
-            // skip any worse g than best known
-            if let Some(&best) = best_g.get(&state) && g > best {
-                continue;
-            }
-
-            // expand neighbors by pressing each button once
-            for bv in &button_vectors {
-                // calc next state and prune if any component would exceed
-                // target
-                let mut next = state.clone();
-                let mut ok = true;
-                for i in 0..n_counters {
-                    let sum = next[i].saturating_add(bv[i]);
-                    if sum > target[i] {
-                        ok = false;
-                        break;
-                    }
-                    next[i] = sum;
-                }
-                if !ok {
-                    continue;
-                }
-
-                let next_g = g+1;
-                if let Some(&existing_g) = best_g.get(&next) && next_g >= existing_g {
-                    continue;
-                }
-
-                // check if target reached
-                if next == target {
-                    return next_g;
-                }
-
-                best_g.insert(next.clone(), next_g);
-                let h = heuristic(&next);
-                let priority = next_g + h;
-                heap.push(Reverse((priority, next_g, next)));
-            }
-        }
-
-        panic!("failed to find a solution for joltage requirements");
-
-        /*
-        // format buttons & requirements to matrices to solve as linear system:
-        // Ax = b
-
-        // a button will inform on a column of matrix A
-        // - build column major slice
-        let mut a_column_major = Vec::new();
-        for button in self.buttons.iter().by_ref() {
-            // want columns of 1's & 0's; if button affects counter (which will
-            // map to row) then track 1
-            for counter_idx in 0..self.joltage_requirements.len() {
-                let factor = f64::from(button.contains(&counter_idx));
-                a_column_major.push(factor);
-            }
-        }
-        let a_matrix: DMatrix<f64> = DMatrix::from_column_slice(
-            self.joltage_requirements.len(),
-            self.buttons.len(),
-            &a_column_major,
-        );
-
-        // matrix b will be a column of requirements
-        let b_floats: Vec<_> = self
-            .joltage_requirements
-            .iter()
-            .map(|&j| f64::from(j))
-            .collect();
-        let b_vector: DVector<f64> = DVector::from_column_slice(&b_floats);
-
-        // BUG matrix A can be not-square, example has a case wider than tall
-        let svd = a_matrix.svd();
-        let x_vector = svd.solve(&b_vector).expect("failed to solve system");
-        let eps = 1e-9f64;
-        x_vector
-            .iter()
-            .map(|&x| {
-                assert!(!x.is_nan(), "solution contains NaN");
-                let rounded = x.round();
-                assert!(
-                    (x - rounded).abs() <= eps,
-                    "solution value not whole number: {x}"
-                );
-                assert!(rounded >= 0.0, "solution value is negative: {x}");
-                assert!(
-                    rounded <= (u64::MAX as f64),
-                    "solution value overflows u64: {x}"
-                );
-                rounded as u64
-            })
-            .try_fold(0u64, u64::checked_add)
-            .expect("overflow occurred when summing solution vector")
-        */
-        */
+        counters
     }
 }
 
+/// Recursively determine if a combination of buttons by index pressed once
+/// each can match the indicator lights goal.
+///
+/// # Arguments
+///
+/// - `lights_goal` - The indicator lights to match.
+/// - `machine` - The machine with buttons available to press.
+/// - `presses_left` - How many presses left to apply in this recursion step.
+/// - `start_index` - The button index to start at and iterate after in this
+///   recursion step.
+/// - `current_buttons` - The current combination of buttons by index to work
+///   from in this recursion step.
+fn recursive_lights_goal_solvable(
+    lights_goal: &IndicatorLights,
+    machine: &Machine,
+    presses_left: usize,
+    start_index: usize,
+    current_buttons: &mut HashSet<usize>,
+) -> bool {
+    // base case
+    if presses_left == 0 {
+        // either the combo satisfies the goal or not
+        let lights = machine.calculate_lights_from_buttons(current_buttons);
+        return lights == *lights_goal;
+    }
+
+    // iterate remaining buttons to press
+    for index in start_index..machine.buttons.len() {
+        current_buttons.insert(index);
+
+        // recurse with one less press left & start after current index
+        if recursive_lights_goal_solvable(
+            lights_goal,
+            machine,
+            presses_left - 1,
+            index + 1,
+            current_buttons,
+        ) {
+            return true;
+        }
+
+        // backtrack for the next loop
+        current_buttons.remove(&index);
+    }
+
+    // no successful combination found
+    false
+}
+
+/// Determine the minimum button presses to match the indicator light diagram.
+///
+/// # Returns
+///
+/// An Option that either is `Some(presses)` for the number of presses
+/// determined, or `None` for no solution found.
+fn minimum_button_presses_for_light_diagram(
+    light_diagram: &IndicatorLights,
+    machine: &Machine,
+) -> Option<usize> {
+    /*
+    Thanks Gemini for pointing out I don't need permutations of increasing
+    presses to distribute as permutations:
+    any button only needs to be pressed once or never
+
+    I already intuited an even number of presses would be a net zero, but
+    didn't catch on that odd number presses greater than one would be net zero
+    to one press
+    */
+
+    for presses in 1..=machine.buttons.len() {
+        let mut current_buttons = HashSet::new();
+        if recursive_lights_goal_solvable(
+            light_diagram,
+            machine,
+            presses,
+            0,
+            &mut current_buttons,
+        ) {
+            return Some(presses);
+        }
+    }
+
+    // failed to find min button presses to produce goal
+    None
+}
+
 impl ParsedPart1 for Day10 {
-    type ParsedInput = Vec<LightMachine>;
+    /// A sequence of tuples of a machine with buttons, an indicator light
+    /// diagram, and joltage requirements.
+    type ParsedInput = Vec<(Machine, IndicatorLights, JoltageCounters)>;
 
     fn parse(input: &str) -> aoc_framework::ParseResult<Self::ParsedInput> {
-        let machines: Self::ParsedInput = parse_lines(input, |line| {
+        let parsed: Self::ParsedInput = parse_lines(input, |line| {
             let tokens: Vec<&str> = line.split_whitespace().collect();
             assert!(
                 tokens.len() >= 3,
                 "expected at least 3 tokens across line: {tokens:?}"
             );
 
-            let light_goal = strip_braces_panic(
+            let light_diagram: IndicatorLights = strip_braces_panic(
                 tokens.first().expect("failed to get first token"),
                 &BraceType::SquareBrackets,
             )
@@ -481,12 +254,18 @@ impl ParsedPart1 for Day10 {
             .map(|c| c == '#')
             .collect();
 
+            // track maximum indexes expected across lights, joltage counters,
+            // and buttons
+            let indexes_length = light_diagram.len();
+
             let buttons = tokens[1..tokens.len() - 1]
                 .iter()
                 .map(|button_wiring| {
                     strip_braces_panic(button_wiring, &BraceType::Parentheses)
                         .split(',')
                         .map(|index| {
+                            // TODO would assert value not bigger than
+                            // indexes_length
                             index.parse().map_err(|source| {
                                 ParseError::parse_int_from_str(index, source)
                             })
@@ -495,7 +274,7 @@ impl ParsedPart1 for Day10 {
                 })
                 .collect::<ParseResult<_>>()?;
 
-            let joltage_requirements = strip_braces_panic(
+            let joltage_requirements: JoltageCounters = strip_braces_panic(
                 tokens.last().expect("failed to get last token"),
                 &BraceType::CurlyBraces,
             )
@@ -507,61 +286,243 @@ impl ParsedPart1 for Day10 {
             })
             .collect::<ParseResult<_>>()?;
 
-            Ok(LightMachine {
-                light_goal,
+            assert_eq!(
+                joltage_requirements.len(),
+                indexes_length,
+                "joltage requirements length does not match indicator lights length"
+            );
+
+            Ok((Machine {
                 buttons,
-                joltage_requirements,
-            })
+                length: indexes_length,
+            }, light_diagram, joltage_requirements))
         })
         .collect::<ParseResult<_>>()?;
 
-        if machines.is_empty() {
+        if parsed.is_empty() {
             Err(ParseError::EmptyInput)
         } else {
-            Ok(machines)
+            Ok(parsed)
         }
     }
 
     type Part1Output = u32;
 
-    fn part1(machines: &Self::ParsedInput) -> Self::Part1Output {
-        machines
+    fn part1(parsed: &Self::ParsedInput) -> Self::Part1Output {
+        parsed
             .iter()
-            .map(|machine| {
-                machine.find_minimum_button_presses_for_light_goal().expect(
-                    "failed to find minimum button presses for a machine",
-                )
+            .map(|(machine, light_diagram, _)| {
+                minimum_button_presses_for_light_diagram(light_diagram, machine)
+                    .expect(
+                        "failed to find minimum button presses for a machine",
+                    )
             })
             .try_fold(0u32, |acc, v| {
                 acc.checked_add(v.try_into().expect(
-                    "failed to cast a minimum button press for summing",
+                    "failed to cast a machine's minimum button presses for summing",
                 ))
             })
             .expect("overflow occurred when summing")
     }
 }
 
-impl ParsedPart2 for Day10 {
-    type Part2Output = u64;
+/// Recursively determine multiple combinations of buttons by index pressed
+/// once each that can match the indicator lights goal.
+///
+/// # Arguments
+///
+/// - `lights_goal` - The indicator lights to match.
+/// - `machine` - The machine with buttons available to press.
+/// - `current_index` - The current button index to use in this recursion step.
+/// - `current_buttons` - The current combination of buttons by index to work
+///   from in this recursion step.
+///
+/// # Returns
+///
+/// A vector of combinations of buttons by index found to solve for the
+/// indicator lights.
+fn recursive_lights_goal_button_combinations(
+    lights_goal: &IndicatorLights,
+    machine: &Machine,
+    current_index: usize,
+    current_buttons: &mut HashSet<usize>,
+) -> Vec<HashSet<usize>> {
+    // base case
+    if current_index >= machine.buttons.len() {
+        // we have a combo to test
+        let lights = machine.calculate_lights_from_buttons(current_buttons);
+        if lights == *lights_goal {
+            return vec![current_buttons.clone()];
+        }
+        return vec![];
+    }
 
-    #[expect(clippy::print_stdout, reason = "debugging")]
-    fn part2(machines: &Self::ParsedInput) -> Self::Part2Output {
-        machines
-            .iter()
-            .map(|machine| {
-                println!("going to press buttons...");
-                let result = machine
-                    .find_minimum_button_presses_for_joltage_requirements();
-                println!("pressed buttons {result} times");
-                result
+    // recursion should modify current_buttons with current index, and recurse
+    // to the next index
+
+    // get combinations without current index
+    let mut without_index = recursive_lights_goal_button_combinations(
+        lights_goal,
+        machine,
+        current_index + 1,
+        current_buttons,
+    );
+
+    // get combinations with current index
+    current_buttons.insert(current_index);
+    let with_index = recursive_lights_goal_button_combinations(
+        lights_goal,
+        machine,
+        current_index + 1,
+        current_buttons,
+    );
+    // backtrack the insertion
+    current_buttons.remove(&current_index);
+
+    // combine results; have one result extend the other & be returned
+    without_index.extend(with_index);
+    without_index
+}
+
+/// Recursively determine minimum button presses to match a joltage counter.
+///
+/// # Arguments
+///
+/// - `counters_goal` - The joltage counters to match.
+/// - `machine` - The machine with buttons available to press.
+/// - `memo` - A memoization cache for dynamic programming.
+///
+/// # Returns
+///
+/// An option that either holds `Some(presses)` for the number of presses, or
+/// `None` for no working combination found.
+fn recursive_minimum_button_presses_for_counters(
+    counters_goal: &JoltageCounters,
+    machine: &Machine,
+    memo: &mut HashMap<JoltageCounters, Option<usize>>,
+) -> Option<usize> {
+    /*
+    inspired from: https://www.reddit.com/r/adventofcode/comments/1pk87hl/2025_day_10_part_2_bifurcate_your_way_to_victory/
+    - whatever solution there is for the joltage counters, it can produce a
+      light display; odd joltage -> on, otherwise off
+    - solving for this light display gives possible button combos used in
+      solution
+      - just buttons pressed an odd number of times; there can be extra even
+        presses on any more buttons, including the buttons found
+    - subtract the single button presses result from the counters; this should
+      cause counters to be even numbers
+    - halve the counters, setting up a recursive case to solve
+      - calculating `2*f(half_counters) + count_buttons`
+      - recursion excellent candidate for dynamic programming
+    - result is minimum of recursive calculations
+    */
+
+    // memoization
+    if let Some(&result) = memo.get(counters_goal) {
+        return result;
+    }
+
+    // base case
+    if counters_goal.iter().all(|c| *c == 0) {
+        return Some(0);
+    }
+
+    // map to light display
+    let lights: Vec<bool> = counters_goal.iter().map(|c| c % 2 != 0).collect();
+    // calculate button combos that would solve lights
+    let mut current_buttons = HashSet::new();
+    // TODO worth caching combos from lights? would want another memo
+    let button_combos = recursive_lights_goal_button_combinations(
+        &lights,
+        machine,
+        0,
+        &mut current_buttons,
+    );
+
+    // calculate minimums from button combos and return the smallest found, or
+    // None for no solution
+    let result = button_combos
+        .iter()
+        .filter_map(|buttons| {
+            // subtract the values the buttons would contribute as single
+            // presses from the counters goal
+            // - if subtraction overflows, filter out as unsolvable
+            let subtraction =
+                machine.calculate_counters_from_single_buttons(buttons);
+            let new_counters_opt: Option<JoltageCounters> = subtraction
+                .into_iter()
+                .zip(counters_goal)
+                .map(|(sub, counter)| counter.checked_sub(sub))
+                .collect();
+            new_counters_opt.and_then(|new_counters| {
+                assert!(
+                    new_counters.iter().all(|c| c % 2 == 0),
+                    "not all values in new counter are even: {new_counters:?}"
+                );
+                // halve the counter's even numbers and recursively solve its
+                // minimum; filter out if recursion fails
+                let half_counters: JoltageCounters = new_counters
+                    .into_iter()
+                    .map(|counter| counter / 2)
+                    .collect();
+                recursive_minimum_button_presses_for_counters(
+                    &half_counters,
+                    machine,
+                    memo,
+                )
+            }).map(|recursive_min| {
+                // the button presses will be the recursive min found times two,
+                // plus the number of buttons pressed this recursive step
+                2 * recursive_min + buttons.len()
             })
-            .try_fold(0u64, u64::checked_add)
+        })
+        .min();
+
+    // cache result then return
+    memo.insert(counters_goal.clone(), result);
+    result
+}
+
+/// Determine the minimum button presses to match the joltage requirements.
+///
+/// # Returns
+///
+/// An Option that either is `Some(presses)` for the number of presses
+/// determined, or `None` for no solution found.
+fn minimum_button_presses_for_joltage_requirements(
+    joltage_requirements: &JoltageCounters,
+    machine: &Machine,
+) -> Option<usize> {
+    let mut memo = HashMap::new();
+    recursive_minimum_button_presses_for_counters(
+        joltage_requirements,
+        machine,
+        &mut memo,
+    )
+}
+
+impl ParsedPart2 for Day10 {
+    type Part2Output = u32;
+
+    fn part2(parsed: &Self::ParsedInput) -> Self::Part2Output {
+        parsed
+            .iter()
+            .map(|(machine, _, joltage_requirements)| {
+                minimum_button_presses_for_joltage_requirements(
+                    joltage_requirements,
+                    machine,
+                ).expect("failed to find minimum button presses for a machine")
+            })
+            .try_fold(0u32, |acc, v| {
+                acc.checked_add(v.try_into().expect(
+                    "failed to cast a machine's minimum button presses for summing"
+                ))
+            })
             .expect("overflow occurred when summing")
     }
 }
 
-// TODO still working on part 2
-impl_runnable_solution!(Day10 => ParsedPart1);
+impl_runnable_solution!(Day10 => ParsedPart2);
 
 #[cfg(test)]
 mod tests {
@@ -580,7 +541,6 @@ mod tests {
         Ok(())
     }
 
-    #[ignore = "still working on solution"]
     #[test]
     fn part2_solves_example() -> ParseResult<()> {
         let parsed = Day10::parse(EXAMPLE_INPUT)?;
