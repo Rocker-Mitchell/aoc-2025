@@ -54,6 +54,36 @@ The architected framework code had both appealing and uncomfortable takeaways.
 - Having the solution runner use a struct implementing an output handler trait
   so messages print as the solution runs was great! Very flexible for a CLI to
   format messages as desired.
+- Got an idea later about a separation of concern for parsing and parts.
+  `ParsedPart1` involved specifying a type for parsed input so the part's
+  function could expect it as an argument; nothing restricts that type
+  from being a string of the raw input. So, instead of two traits for a part
+  where the difference is a parse function being available (`ParsedPart1` and
+  `Part1`), there can be a trait for parsing input into usable data and a part
+  trait adds a type definition to be expected as the part function's argument.
+  - The parsing trait would likely do a constructor pattern, take in a string
+    ref to return an instance of self.
+  - If no supertraits are leaned on, then the struct implementing the parse
+    trait can be separate from the part traits. One trait doing
+    everything would still work, but separating cognitive load of a struct
+    representing data vs implementation would be useful.
+    - Runner generic functions would need to outline multiple generic types
+      for the separate traits, as they couldn't/shouldn't require one type to
+      implement all traits.
+  - Some types for parsed data were just standard library collections, like
+    vectors. If the parse trait must return an instance of self, a technique
+    could develop of tuple structs that wrap the collection, like
+    `struct DayNData(Vec<u16>)`.
+  - If the parts don't require parsing and want a string ref passed, runner
+    generic functions can be defined that pass the string ref instead of
+    parsing first.
+  - Trait bounds would be significantly leaned on in generic functions. With a
+    trait `Part` that defines `type Input` and `fn part(input: &Self::Input)`:
+    `<P: Part<Input = I>, I: Parse>` requires the part expects the parsed input
+    type, `<P: Part<Input = str>>` requires string input so a raw input string
+    can be passed.
+    - That sparks a possible idea that a single `Part` trait can be done, but
+      implementations would be forced to make separate structs.
 
 Notes on implementing solutions as AoC started:
 
