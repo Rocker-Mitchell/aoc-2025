@@ -82,8 +82,17 @@ The architected framework code had both appealing and uncomfortable takeaways.
     `<P: Part<Input = I>, I: Parse>` requires the part expects the parsed input
     type, `<P: Part<Input = str>>` requires string input so a raw input string
     can be passed.
-    - That sparks a possible idea that a single `Part` trait can be done, but
-      implementations would be forced to make separate structs.
+    - That sparks a possible idea that a single trait can be done to represent
+      a part to solve. But getting this to allow one struct to implement twice
+      for two parts would be done with a generic trait, and some marker type
+      to differentiate the parts implemented. If there's a `Solve<P>` trait and
+      empty structs `Part1` and `Part2`, then implement blocks can target
+      `Solve<Part1>` and `Solve<Part2>`.
+      - Notably found if the trait implements `fn solve(&self, input: &str)`,
+        the struct can be constructed then methods invoked with
+        `Solve::<Part1>::solve(&solver, input)`.
+- There's an older package maybe worth looking into:
+  [advent_of_code_traits](https://crates.io/crates/advent_of_code_traits)
 
 Notes on implementing solutions as AoC started:
 
